@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtime Translator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #64ffda;
+        }
+        .status {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .status .dot {
+            display: inline-block;
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+            background: #f44;
+        }
+        .status.connected .dot { background: #4f4; }
+        .panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .panel {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 300px;
+        }
+        .panel h2 {
+            font-size: 16px;
+            color: #888;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .panel .content {
+            font-size: 18px;
+            line-height: 1.8;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .sentence { margin-bottom: 8px; }
+        .sentence.partial { color: #aaa; font-style: italic; }
+        .sentence.final { color: #fff; }
+        .sentence .speaker { color: #64ffda; font-size: 12px; margin-right: 6px; }
+        .translation { color: #ffd93d; }
+        .audio-btn {
+            background: #0f3460;
+            border: 1px solid #64ffda;
+            color: #64ffda;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .audio-btn:hover { background: #1a5276; }
+    </style>
+</head>
+<body>
+    <h1>Realtime Translator</h1>
+    <div class="status" id="status">
+        <span class="dot"></span>
+        <span class="text">Connecting...</span>
+    </div>
+    <div class="panels">
+        <div class="panel">
+            <h2>Source (ASR)</h2>
+            <div class="content" id="asr-content"></div>
+        </div>
+        <div class="panel">
+            <h2>Translation</h2>
+            <div class="content" id="translation-content"></div>
+        </div>
+    </div>
+
+    <script>
+        const asrContent = document.getElementById('asr-content');
+        const transContent = document.getElementById('translation-content');
+        const statusEl = document.getElementById('status');
+        let currentPartialEl = null;
+        let sentenceCount = 0;
+
+        function connect() {
+            const ws = new WebSocket(`ws://${location.hostname}:8765`);
+
+            ws.onopen = () => {
+                statusEl.className = 'status connected';
+                statusEl.querySelector('.text').textContent = 'Connected';
+            };
+
+            ws.onclose = () => {
+                statusEl.className = 'status';
+                statusEl.querySelector('.text').textContent = 'Disconnected. Reconnecting...';
+                setTimeout(connect, 2000);
+            };
+
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+
+                if (msg.type === 'partial') {
+                    if (!currentPartialEl) {
+                        currentPartialEl = document.createElement('div');
+                        currentPartialEl.className = 'sentence partial';
+                        asrContent.appendChild(currentPartialEl);
+                    }
+                    currentPartialEl.textContent = msg.text;
+                    asrContent.scrollTop = asrContent.scrollHeight;
+                }
+                else if (msg.type === 'final') {
+                    if (currentPartialEl) {
+                        currentPartialEl.className = 'sentence final';
+                        let prefix = '';
+                        if (msg.speaker) prefix = `<span class="speaker">[${msg.speaker}]</span>`;
+                        currentPartialEl.innerHTML = prefix + msg.text;
+                        currentPartialEl = null;
+                    } else {
+                        const el = document.createElement('div');
+                        el.className = 'sentence final';
+                        el.textContent = msg.text;
+                        asrContent.appendChild(el);
+                    }
+                    sentenceCount++;
+                    asrContent.scrollTop = asrContent.scrollHeight;
+                }
+                else if (msg.type === 'translation_final') {
+                    const el = document.createElement('div');
+                    el.className = 'sentence translation';
+                    el.id = `trans-${msg.sentence_id}`;
+                    el.textContent = msg.text;
+                    transContent.appendChild(el);
+                    transContent.scrollTop = transContent.scrollHeight;
+                }
+                else if (msg.type === 'tts_ready') {
+                    const transEl = document.getElementById(`trans-${msg.sentence_id}`);
+                    if (transEl) {
+                        const btn = document.createElement('button');
+                        btn.className = 'audio-btn';
+                        btn.textContent = '▶ Play';
+                        btn.onclick = () => {
+                            const audio = new Audio(`http://${location.hostname}:${location.port}${msg.audio_url}`);
+                            audio.play();
+                        };
+                        transEl.appendChild(btn);
+                    }
+                }
+            };
+        }
+
+        connect();
+    </script>
+</body>
+</html>

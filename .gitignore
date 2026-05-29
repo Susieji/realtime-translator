@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# Virtual environments
+venv/
+env/
+.venv/
+melotts_env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Output audio files (generated at runtime)
+output/*.wav
+
+# Model caches (downloaded by install.py)
+models/
+_asr_cache/
+_hw_cache/
+
+# Logs
+*.log
+install_log.txt
+
+# Temp files
+*.tmp
+*.temp
+
+# Design doc generation script output
+design_doc.docx
+
+# Distribution
+dist/
+build/
+*.egg-info/

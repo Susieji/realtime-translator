@@ -1,0 +1,30 @@
+# Audio capture
+sounddevice>=0.4.6
+numpy>=1.24.0
+soundfile>=0.12.0
+
+# VAD
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Streaming ASR (Paraformer)
+funasr>=1.0.0
+modelscope>=1.37.0
+
+# Accurate ASR (Qwen3-ASR on iGPU)
+openvino>=2025.4
+transformers>=4.57.0
+
+# Translation (Opus-MT)
+sentencepiece>=0.1.99
+protobuf>=3.20.0
+
+# TTS (MeloTTS)
+# pip install git+https://github.com/myshell-ai/MeloTTS.git
+
+# WebSocket server
+websockets>=12.0
+
+# Utilities
+scipy>=1.10.0
+librosa>=0.10.0
