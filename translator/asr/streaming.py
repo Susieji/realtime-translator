@@ -81,9 +81,28 @@ class StreamingAsr:
         return None
 
     def end_sentence(self, timestamp_ms: int) -> Optional[AsrResult]:
-        """End streaming session. Returns accumulated partial text."""
+        """End streaming session. Returns accumulated partial text.
+
+        Flushes any residual audio (shorter than one streaming chunk) through
+        the online model with is_final=True so the tail of the sentence is not
+        dropped. Without this, up to PARAFORMER_CHUNK_MS of trailing audio per
+        sentence would never be transcribed.
+        """
         with self._lock:
+            residual = self._chunk_buffer
             self._chunk_buffer = np.array([], dtype=np.float32)
+
+        if len(residual) > 0:
+            result = self._online_model.generate(
+                input=residual,
+                cache=self._cache,
+                is_final=True,
+                chunk_size=[0, 10, 5],
+            )
+            tail_text = self._extract_text(result)
+            if tail_text:
+                self._accumulated_text += tail_text
+
         self._cache = {}
         final_text = self._accumulated_text
         self._accumulated_text = ""
@@ -98,7 +117,9 @@ class StreamingAsr:
 
     def finalize_offline(self, sentence: SentenceAudio) -> Optional[AsrResult]:
         """Run Paraformer Offline on complete sentence. Used as Qwen3 fallback."""
-        result = self._offline_model.generate(input=sentence.samples)
+        from translator.utils.audio import normalize_audio
+        samples = normalize_audio(sentence.samples)
+        result = self._offline_model.generate(input=samples)
         text = self._extract_text(result)
         if text:
             return AsrResult(

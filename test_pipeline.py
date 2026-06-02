@@ -109,10 +109,11 @@ print("\n[Test 3] VAD engine")
 try:
     from translator.audio.vad import VadEngine, SentenceManager, VadState
     vad = VadEngine()
-    # Feed silence
+    # Feed silence. FSMN-VAD returns a list of [start_ms, end_ms] segments
+    # (empty when no speech event), not a probability.
     silence = np.zeros(config.BLOCK_SIZE, dtype=np.float32)
-    prob = vad.process_chunk(silence)
-    assert 0.0 <= prob <= 1.0
+    segments = vad.process_chunk(silence)
+    assert isinstance(segments, list)
     results.ok("VAD engine loads and processes silence")
 except Exception as e:
     results.fail("VAD engine", e)

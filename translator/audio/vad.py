@@ -47,6 +47,7 @@ class VadEngine:
             cache=self._cache,
             is_final=is_final,
             chunk_size=config.FSMN_VAD_CHUNK_MS,
+            max_end_silence_time=config.FSMN_VAD_MAX_END_SILENCE_MS,
         )
         if result and len(result) > 0:
             item = result[0]
@@ -73,7 +74,10 @@ class SentenceManager:
     providing more semantically aware sentence boundaries.
     """
 
-    _PRE_BUFFER_CHUNKS = 5
+    # ~320ms of audio kept before the detected speech onset. FSMN-VAD reports
+    # a start point that can lag the true onset; a wider pre-buffer avoids
+    # clipping the first syllable, which Paraformer is especially sensitive to.
+    _PRE_BUFFER_CHUNKS = 10
 
     def __init__(self, vad: VadEngine):
         self._vad = vad

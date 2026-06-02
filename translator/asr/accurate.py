@@ -86,12 +86,14 @@ class AccurateAsr:
 
         import tempfile
         import soundfile as sf
+        from translator.utils.audio import normalize_audio
 
         tmp_path = None
         try:
+            samples = normalize_audio(sentence.samples)
             with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
                 tmp_path = f.name
-                sf.write(tmp_path, sentence.samples, config.SAMPLE_RATE)
+                sf.write(tmp_path, samples, config.SAMPLE_RATE)
 
             with self._lock:
                 results = self._model.transcribe(audio=tmp_path)
