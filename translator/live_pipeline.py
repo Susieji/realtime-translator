@@ -63,8 +63,8 @@ class LivePipeline:
 
     def load_models(self):
         """Load all models."""
-        print("  [1/5] Loading SileroVAD...")
-        # VAD loaded in __init__
+        print("  [1/5] Loading FSMN-VAD (endpoint detection)...")
+        # VAD loaded in __init__ via FunASR AutoModel
         print("        [OK]")
 
         print("  [2/5] Loading Paraformer streaming (CPU)...")

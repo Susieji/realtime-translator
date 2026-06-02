@@ -7,10 +7,11 @@ DTYPE = "float32"
 BLOCK_MS = 32
 BLOCK_SIZE = 512  # 32ms @ 16kHz
 
-# VAD (SileroVAD)
-VAD_THRESHOLD = 0.5
-VAD_MIN_SILENCE_MS = 600
+# VAD (FunASR FSMN-VAD with endpoint detection)
 VAD_MIN_SPEECH_MS = 250
+FSMN_VAD_MODEL = "iic/speech_fsmn_vad_zh-cn-16k-common-pytorch"
+FSMN_VAD_CHUNK_MS = 200  # chunk size for streaming VAD (ms)
+FSMN_VAD_MAX_END_SILENCE_MS = 800  # max silence before endpoint (ms)
 
 # Paraformer streaming ASR
 PARAFORMER_ONLINE_MODEL = "iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-online"
