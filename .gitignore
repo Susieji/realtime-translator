@@ -45,3 +45,12 @@ design_doc.docx
 dist/
 build/
 *.egg-info/
+
+# Word lock + backup + generated tech doc
+~$*.docx
+*.bak.docx
+项目技术文档.docx
+
+# Tech-doc generation/update scripts (not tracked)
+create_tech_doc.py
+update_tech_doc.py

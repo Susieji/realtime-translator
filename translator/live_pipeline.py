@@ -23,6 +23,7 @@ from translator.tts.melotts import MeloTTSModel
 from translator.server.ws_server import WsServer
 from translator.messages import SentenceAudio, AsrResult
 from translator.utils.audio import save_audio
+from translator.utils.text import is_meaningful, clean_asr_text
 
 logger = logging.getLogger(__name__)
 
@@ -148,12 +149,24 @@ class LivePipeline:
         state = self._sentence_mgr.state
 
         if state == VadState.SPEECH or state == VadState.TRAILING_SILENCE:
+            asr_result = None
             if not self._in_sentence:
                 self._in_sentence = True
                 self._streaming_asr.start_sentence(ts)
                 self._current_partial = ""
+                # Seed streaming ASR with the VAD onset pre-buffer so the first
+                # syllable (spoken before speech was confirmed) isn't dropped.
+                # The onset already contains this chunk, so feed it instead of
+                # `samples` to avoid duplicating the current block.
+                onset = self._sentence_mgr.take_onset()
+                if onset:
+                    onset_audio = np.concatenate(onset)
+                    asr_result = self._streaming_asr.feed(onset_audio, ts)
+                else:
+                    asr_result = self._streaming_asr.feed(samples, ts)
+            else:
+                asr_result = self._streaming_asr.feed(samples, ts)
 
-            asr_result = self._streaming_asr.feed(samples, ts)
             if asr_result and asr_result.text:
                 self._current_partial = asr_result.text
                 self._display_partial(asr_result.text)
@@ -192,6 +205,15 @@ class LivePipeline:
                 result = self._streaming_asr.finalize_offline(sentence_audio)
                 if result and result.text:
                     final_text = result.text
+
+            # Clean ASR stutters/hallucinated repetitions, then drop empty /
+            # punctuation-only / ultra-short noise transcriptions before they
+            # reach translation + TTS. Such fragments come from spurious VAD
+            # segments and otherwise produce empty translation bubbles and
+            # garbage audio files.
+            final_text = clean_asr_text(final_text)
+            if not is_meaningful(final_text):
+                continue
 
             # Push final ASR to UI
             self._display_final(final_text, sentence_num)

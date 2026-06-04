@@ -5,14 +5,12 @@ import numpy as np
 import sounddevice as sd
 
 import config
-from translator.audio.ring_buffer import RingBuffer
 
 
 class AudioCapture:
     """Captures audio from the default microphone via sounddevice callback."""
 
     def __init__(self):
-        self._ring = RingBuffer(config.SAMPLE_RATE * 30)
         self._stream = None
         self._start_time_ms = 0
         self._samples_captured = 0
@@ -24,7 +22,6 @@ class AudioCapture:
 
     def _callback(self, indata, frames, time_info, status):
         samples = indata[:, 0].copy()
-        self._ring.write(samples)
         ts = self._start_time_ms + int(self._samples_captured * 1000 / config.SAMPLE_RATE)
         self._samples_captured += len(samples)
         for cb in self._listeners:
@@ -47,7 +44,3 @@ class AudioCapture:
             self._stream.stop()
             self._stream.close()
             self._stream = None
-
-    @property
-    def ring_buffer(self) -> RingBuffer:
-        return self._ring

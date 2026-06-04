@@ -80,23 +80,24 @@ class AccurateAsr:
         self._available = True
 
     def transcribe(self, sentence: SentenceAudio) -> Optional[AsrResult]:
-        """Transcribe a complete sentence. Thread-safe."""
+        """Transcribe a complete sentence. Thread-safe.
+
+        Feeds the audio to Qwen3-ASR in memory as a ``(ndarray, sample_rate)``
+        tuple. The model's ``transcribe()`` accepts that form directly, so we
+        avoid writing each sentence to a temporary WAV and reading it back from
+        disk on every utterance — a round-trip that added latency on the final
+        ASR path for no benefit (Qwen resamples/normalizes internally anyway).
+        """
         if self._model is None:
             return None
 
-        import tempfile
-        import soundfile as sf
         from translator.utils.audio import normalize_audio
 
-        tmp_path = None
         try:
             samples = normalize_audio(sentence.samples)
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
-                tmp_path = f.name
-                sf.write(tmp_path, samples, config.SAMPLE_RATE)
 
             with self._lock:
-                results = self._model.transcribe(audio=tmp_path)
+                results = self._model.transcribe(audio=(samples, config.SAMPLE_RATE))
 
             if results and len(results) > 0:
                 item = results[0]
@@ -116,9 +117,6 @@ class AccurateAsr:
                     )
         except Exception:
             pass
-        finally:
-            if tmp_path and os.path.exists(tmp_path):
-                os.unlink(tmp_path)
 
         return None
 
